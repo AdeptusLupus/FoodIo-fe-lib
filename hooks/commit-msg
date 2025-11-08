@@ -1,0 +1,30 @@
+#!/bin/sh
+# commit-msg hook: enforce Jira ID in commit messages
+# Save as .git/hooks/commit-msg; chmod +x
+
+set -e
+
+# 1) Git always passes the commit message file as $1
+MSG_FILE="$1"
+
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ]; then
+  echo "❌ commit-msg: commit message file not found; cannot validate Jira ID."
+  exit 1
+fi
+
+# 2) Read the commit message and normalize Windows line endings
+COMMIT_MSG="$(tr -d '\r' < "$MSG_FILE")"
+
+# 3) Jira regex
+JIRA_REGEX='[A-Z][A-Z0-9]*-[0-9]+'
+
+# 4) Check for Jira ID
+if grep -E -q "$JIRA_REGEX" <<< "$COMMIT_MSG"; then
+  MATCH=$(grep -Eo "$JIRA_REGEX" <<< "$COMMIT_MSG" | head -n1)
+  echo "✅ Commit message includes Jira ID: ${MATCH:-unknown}"
+  exit 0
+fi
+
+# 5) Fail commit if no Jira ID
+echo "❌ Commit message must contain a Jira code (e.g., ABC-123)."
+exit 1
